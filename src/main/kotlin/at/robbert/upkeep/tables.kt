@@ -18,3 +18,13 @@ object Chats : IdTable<Long>() {
     val added = datetime("added").defaultExpression(CurrentDateTime())
     val enabled = bool("enabled").default(false)
 }
+
+enum class RedirectMethod {
+    JAVASCRIPT, HTTP301, HTTP302
+}
+
+object LinksToMonitor : IntIdTable() {
+    val link = text("link")
+    val redirectTo = text("redirectTo")
+    val redirectMethod = enumeration("redirectMethod", RedirectMethod::class)
+}

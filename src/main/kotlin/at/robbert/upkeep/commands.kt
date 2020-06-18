@@ -1,6 +1,5 @@
 package at.robbert.upkeep
 
-import com.pengrad.telegrambot.TelegramBot
 import com.pengrad.telegrambot.model.Update
 import com.pengrad.telegrambot.request.SendMessage
 
@@ -9,7 +8,7 @@ interface UpkeepBotCommand {
     val description: String
     val parameters: List<Pair<String, String>>
 
-    fun execute(bot: TelegramBot, originalCommand: Update, params: Map<String, String>)
+    fun execute(bot: UpkeepBot, originalCommand: Update, params: Map<String, String>)
 }
 
 object MonitorLinkCommand : UpkeepBotCommand {
@@ -19,11 +18,11 @@ object MonitorLinkCommand : UpkeepBotCommand {
         get() = emptyList()
 
     override fun execute(
-        bot: TelegramBot,
+        bot: UpkeepBot,
         originalCommand: Update,
         params: Map<String, String>
     ) {
-        println("Executing monitor_link")
+        log.info("Executing monitor_link")
     }
 }
 
@@ -34,11 +33,11 @@ object UnmonitorLinkCommand : UpkeepBotCommand {
         get() = emptyList()
 
     override fun execute(
-        bot: TelegramBot,
+        bot: UpkeepBot,
         originalCommand: Update,
         params: Map<String, String>
     ) {
-        println("Executing unmonitor_link")
+        log.info("Executing unmonitor_link")
     }
 }
 
@@ -49,11 +48,11 @@ object ListLinksCommand : UpkeepBotCommand {
         get() = emptyList()
 
     override fun execute(
-        bot: TelegramBot,
+        bot: UpkeepBot,
         originalCommand: Update,
         params: Map<String, String>
     ) {
-        println("Executing list_links")
+        log.info("Executing list_links")
     }
 }
 
@@ -67,10 +66,10 @@ object DemoCommand : UpkeepBotCommand {
         )
 
     override fun execute(
-        bot: TelegramBot,
+        bot: UpkeepBot,
         originalCommand: Update,
         params: Map<String, String>
     ) {
-        bot.execute(SendMessage(originalCommand.message().chat().id(), "Got parameters: $params"))
+        bot.bot.execute(SendMessage(originalCommand.message().chat().id(), "Got parameters: $params"))
     }
 }

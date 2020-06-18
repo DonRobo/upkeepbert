@@ -18,7 +18,6 @@ import java.time.LocalDateTime
 import java.time.LocalDateTime.now
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentMap
 import kotlin.coroutines.CoroutineContext
 import kotlin.system.exitProcess
 
@@ -40,7 +39,7 @@ class UpkeepBot : CoroutineScope {
         user = ConfigLoader.config.databaseUser,
         password = ConfigLoader.config.databasePassword
     )
-    private val bot = TelegramBot(ConfigLoader.config.botToken)
+    val bot = TelegramBot(ConfigLoader.config.botToken)
     private val awaitingReplies = ConcurrentHashMap<AwaitingReply, Pair<LocalDateTime, CompletableFuture<String>>>()
 
     fun start() {
@@ -54,7 +53,7 @@ class UpkeepBot : CoroutineScope {
                 )
             )
             if (!setCommands.response.isOk) {
-                println("Couldn't set commands! $setCommands")
+                this@UpkeepBot.log.error("Couldn't set commands! $setCommands")
                 exitProcess(1)
             }
             bot.setUpdatesListener {
@@ -64,16 +63,29 @@ class UpkeepBot : CoroutineScope {
 
                 return@setUpdatesListener UpdatesListener.CONFIRMED_UPDATES_ALL
             }
-            println("Bot started!")
+            this@UpkeepBot.log.info("Bot started!")
+            sendMessage("I'm back bitches!")
+        }
+    }
+
+    private fun sendMessage(message:String){
+        transaction {
+            val chats=Chats.select { Chats.enabled.eq(true) }.map { it[Chats.id] }
+            chats.forEach {
+                bot.execute(SendMessage(it, message))
+            }
         }
     }
 
     private fun handleUpdate(update: Update) {
-//        println("Received update: $update")
+        log.trace("Received update: $update")
         launch {
             update.message()?.let { updateChat(it) }
-            if (update.message()?.chat()?.id()?.let { isChatEnabled(it) } == true && update.message()
+            val isChatEnabled = isChatEnabled(update.message().chat().id())
+            if (update.message()?.chat()?.id()?.let { isChatEnabled } == true && update.message()
                     .replyToMessage() != null) {
+                log.debug("Got reply to ${update.message().replyToMessage().messageId()}")
+                log.trace("Expecting replies to ${awaitingReplies.keys().toList()}")
                 val awaitingReply = awaitingReplies.remove(
                     AwaitingReply(
                         update.message().chat().id(),
@@ -81,19 +93,21 @@ class UpkeepBot : CoroutineScope {
                     )
                 )
                 awaitingReply?.second?.complete(update.message().text())
-                awaitingReplies.filterValues { it.first.isAfter(now()) }.forEach { (k, _) ->
+                awaitingReplies.filterValues { !it.first.isAfter(now()) }.forEach { (k, _) ->
                     awaitingReplies.remove(k)
                 }
-            } else if (update.message()?.chat()?.id()?.let { isChatEnabled(it) } == true && update.message().entities()
+            } else if (update.message()?.chat()?.id()?.let { isChatEnabled } == true && update.message().entities()
                     ?.any { it.type() == MessageEntity.Type.bot_command } == true) {
-                val command = commands.singleOrNull { it.command == update.message().text().substring(1) }
+                val command = commands.singleOrNull {
+                    it.command == update.message().text().substring(1).replace("@upkeepbert_bot", "")
+                }
                 if (command == null) {
                     bot.execute(SendMessage(update.message().chat().id(), "Invalid command!"))
                 } else {
                     val params = command.parameters.map {
                         it.first to askUser(update.message().chat().id(), update.message().messageId(), it.second)
                     }.toMap()
-                    command.execute(bot, update, params)
+                    command.execute(this@UpkeepBot, update, params)
                 }
             }
         }
@@ -134,7 +148,7 @@ class UpkeepBot : CoroutineScope {
             Private -> members.single()
             channel, supergroup, group -> msg.chat().title()
         }
-        println("Chat $chatName has members $members")
+        log.debug("Chat $chatName has members $members")
         val chatId = chat.id()!!
 
         val chatMembersDto = Members(members.map { memberName -> Member(memberName) })

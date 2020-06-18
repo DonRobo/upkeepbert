@@ -21,6 +21,8 @@ dependencies {
     implementation("org.postgresql:postgresql:42.2.14")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.3.7")
+    implementation("org.slf4j:slf4j-api:1.7.30")
+    implementation("org.slf4j:slf4j-log4j12:1.7.30")
 }
 
 tasks {
