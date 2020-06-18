@@ -2,6 +2,8 @@ package at.robbert.upkeep
 
 import com.pengrad.telegrambot.model.Update
 import com.pengrad.telegrambot.request.SendMessage
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.transaction
 
 interface UpkeepBotCommand {
     val command: String
@@ -52,7 +54,26 @@ object ListLinksCommand : UpkeepBotCommand {
         originalCommand: Update,
         params: Map<String, String>
     ) {
-        log.info("Executing list_links")
+        val links = transaction {
+            LinksToMonitor.selectAll().map {
+                LinkToMonitor(
+                    link = it[LinksToMonitor.link],
+                    redirectMethod = it[LinksToMonitor.redirectMethod],
+                    redirectTo = it[LinksToMonitor.redirectTo]
+                )
+            }
+        }
+        bot.bot.execute(
+            SendMessage(
+                originalCommand.message().chat().id(),
+                if (links.isEmpty())
+                    "No links being monitored right now"
+                else
+                    "Links being monitored:\n${links.joinToString("\n") {
+                        "\t${it.link} should redirect to ${it.redirectTo} using ${it.redirectMethod}"
+                    }}"
+            )
+        )
     }
 }
 

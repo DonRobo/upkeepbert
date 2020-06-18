@@ -44,7 +44,7 @@ class UpkeepBot : CoroutineScope {
 
     fun start() {
         transaction {
-            SchemaUtils.create(Chats)
+            SchemaUtils.create(Chats, LinksToMonitor)
         }
         runBlocking {
             val setCommands = bot.awaitExecution(
@@ -64,7 +64,6 @@ class UpkeepBot : CoroutineScope {
                 return@setUpdatesListener UpdatesListener.CONFIRMED_UPDATES_ALL
             }
             this@UpkeepBot.log.info("Bot started!")
-            sendMessage("I'm back bitches!")
         }
     }
 

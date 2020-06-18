@@ -23,6 +23,8 @@ enum class RedirectMethod {
     JAVASCRIPT, HTTP301, HTTP302
 }
 
+data class LinkToMonitor(val link:String, val redirectTo:String, val redirectMethod: RedirectMethod)
+
 object LinksToMonitor : IntIdTable() {
     val link = text("link")
     val redirectTo = text("redirectTo")
