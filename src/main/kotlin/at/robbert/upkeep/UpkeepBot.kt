@@ -2,8 +2,11 @@ package at.robbert.upkeep
 
 import com.pengrad.telegrambot.TelegramBot
 import com.pengrad.telegrambot.UpdatesListener
-import com.pengrad.telegrambot.model.*
+import com.pengrad.telegrambot.model.BotCommand
 import com.pengrad.telegrambot.model.Chat.Type.*
+import com.pengrad.telegrambot.model.Message
+import com.pengrad.telegrambot.model.MessageEntity
+import com.pengrad.telegrambot.model.Update
 import com.pengrad.telegrambot.model.request.ForceReply
 import com.pengrad.telegrambot.request.GetChatAdministrators
 import com.pengrad.telegrambot.request.SendMessage
@@ -42,6 +45,10 @@ class UpkeepBot : CoroutineScope {
     val bot = TelegramBot(ConfigLoader.config.botToken)
     private val awaitingReplies = ConcurrentHashMap<AwaitingReply, Pair<LocalDateTime, CompletableFuture<String>>>()
 
+    private val brokenLinks = ConcurrentHashMap<String, Unit>()
+
+    private var ticker: Job? = null
+
     fun start() {
         transaction {
             SchemaUtils.create(Chats, LinksToMonitor)
@@ -65,11 +72,17 @@ class UpkeepBot : CoroutineScope {
             }
             this@UpkeepBot.log.info("Bot started!")
         }
+        ticker = launch {
+            while (true) {
+                checkAllLinks()
+                delay(10_000)
+            }
+        }
     }
 
-    private fun sendMessage(message:String){
+    private fun sendMessage(message: String) {
         transaction {
-            val chats=Chats.select { Chats.enabled.eq(true) }.map { it[Chats.id] }
+            val chats = Chats.select { Chats.enabled.eq(true) }.map { it[Chats.id] }
             chats.forEach {
                 bot.execute(SendMessage(it, message))
             }
@@ -106,10 +119,36 @@ class UpkeepBot : CoroutineScope {
                     val params = command.parameters.map {
                         it.first to askUser(update.message().chat().id(), update.message().messageId(), it.second)
                     }.toMap()
-                    command.execute(this@UpkeepBot, update, params){
+                    command.execute(this@UpkeepBot, update, params) {
                         bot.execute(SendMessage(update.message().chat().id(), it))
                     }
                 }
+            }
+        }
+    }
+
+    suspend fun checkAllLinks() {
+        val allLinks = transaction {
+            LinksToMonitor.selectAll().map {
+                it[LinksToMonitor.link] to LinkStatus(it[LinksToMonitor.redirectTo], it[LinksToMonitor.redirectMethod])
+            }
+        }
+        allLinks.forEach { (link, expectedStatus) ->
+            checkLink(link, expectedStatus)
+        }
+    }
+
+    suspend fun checkLink(link: String, expectedStatus: LinkStatus) {
+        val currentStatus = LinkChecker.checkLink(link)
+        if (currentStatus != expectedStatus) {
+            brokenLinks[link] = Unit
+            if (currentStatus != null)
+                sendMessage("WARNING!! Link $link changed to $currentStatus (from $expectedStatus)")
+            else
+                sendMessage("WARNING!!!! Link $link is down!!!!")
+        } else {
+            if (brokenLinks.remove(link) != null) {
+                sendMessage("Link $link is okay again!")
             }
         }
     }
