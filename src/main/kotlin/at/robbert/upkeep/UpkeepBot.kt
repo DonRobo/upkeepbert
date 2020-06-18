@@ -106,13 +106,15 @@ class UpkeepBot : CoroutineScope {
                     val params = command.parameters.map {
                         it.first to askUser(update.message().chat().id(), update.message().messageId(), it.second)
                     }.toMap()
-                    command.execute(this@UpkeepBot, update, params)
+                    command.execute(this@UpkeepBot, update, params){
+                        bot.execute(SendMessage(update.message().chat().id(), it))
+                    }
                 }
             }
         }
     }
 
-    private suspend fun askUser(chatId: Long, originalMessageId: Int, question: String): String {
+    suspend fun askUser(chatId: Long, originalMessageId: Int, question: String): String {
         val myMessage = bot.awaitExecution(
             SendMessage(chatId, question)
                 .replyMarkup(ForceReply(true))
@@ -121,7 +123,7 @@ class UpkeepBot : CoroutineScope {
         return awaitReply(chatId, myMessage.response.message().messageId())
     }
 
-    private suspend fun awaitReply(chatId: Long, messageId: Int, validity: Duration = Duration.ofHours(1)): String {
+    suspend fun awaitReply(chatId: Long, messageId: Int, validity: Duration = Duration.ofHours(1)): String {
         val future = CompletableFuture<String>()
         awaitingReplies[AwaitingReply(chatId, messageId)] = now() + validity to future
         return future.await()

@@ -8,6 +8,7 @@ version = "1.0-SNAPSHOT"
 repositories {
     mavenCentral()
     maven("https://dl.bintray.com/kotlin/exposed/")
+    jcenter()
 }
 
 dependencies {
@@ -23,6 +24,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.3.7")
     implementation("org.slf4j:slf4j-api:1.7.30")
     implementation("org.slf4j:slf4j-log4j12:1.7.30")
+    implementation("com.github.kittinunf.fuel:fuel:2.2.3")
+    implementation("com.github.kittinunf.fuel:fuel-coroutines:2.2.3")
+    implementation("org.apache.commons:commons-text:1.8")
 }
 
 tasks {
