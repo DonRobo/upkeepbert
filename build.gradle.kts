@@ -1,14 +1,32 @@
 plugins {
     kotlin("jvm") version "1.3.72"
+    id("com.github.johnrengelman.shadow") version "6.0.0"
+    application
 }
 
 group = "at.robbert"
 version = "1.0-SNAPSHOT"
 
+application.mainClassName = "at.robbert.upkeep.MainKt"
+
 repositories {
     mavenCentral()
     maven("https://dl.bintray.com/kotlin/exposed/")
     jcenter()
+}
+
+tasks.withType<Jar> {
+    manifest {
+        attributes["Main-Class"] = "at.robbert.upkeep.MainKt"
+    }
+
+//    // To add all of the dependencies otherwise a "NoClassDefFoundError" error
+//    from(sourceSets.main.get().output)
+//
+//    dependsOn(configurations.runtimeClasspath)
+//    from({
+//        configurations.runtimeClasspath.get().filter { it.name.endsWith("jar") }.map { zipTree(it) }
+//    })
 }
 
 dependencies {
@@ -28,6 +46,7 @@ dependencies {
     implementation("com.github.kittinunf.fuel:fuel-coroutines:2.2.3")
     implementation("org.apache.commons:commons-text:1.8")
 }
+
 
 tasks {
     compileKotlin {
